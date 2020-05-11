@@ -55,24 +55,29 @@ def display_world(world_size, position, landmarks=None):
 def make_data(N, num_landmarks, world_size, measurement_range, motion_noise, 
               measurement_noise, distance):
 
-
-    # check if data has been made
+    # check that data has been made
+    try:
+        check_for_data(num_landmarks, world_size, measurement_range, motion_noise, measurement_noise)
+    except ValueError:
+        print('Error: You must implement the sense function in robot_class.py.')
+        return []
+    
     complete = False
+    
+    r = robot(world_size, measurement_range, motion_noise, measurement_noise)
+    r.make_landmarks(num_landmarks)
 
     while not complete:
 
         data = []
 
-        # make robot and landmarks
-        r = robot(world_size, measurement_range, motion_noise, measurement_noise)
-        r.make_landmarks(num_landmarks)
         seen = [False for row in range(num_landmarks)]
     
         # guess an initial motion
         orientation = random.random() * 2.0 * pi
         dx = cos(orientation) * distance
         dy = sin(orientation) * distance
-    
+            
         for k in range(N-1):
     
             # collect sensor measurements in a list, Z
@@ -101,3 +106,69 @@ def make_data(N, num_landmarks, world_size, measurement_range, motion_noise,
 
 
     return data
+
+
+def check_for_data(num_landmarks, world_size, measurement_range, motion_noise, measurement_noise):
+    # make robot and landmarks
+    r = robot(world_size, measurement_range, motion_noise, measurement_noise)
+    r.make_landmarks(num_landmarks)
+    
+    
+    # check that sense has been implemented/data has been made
+    test_Z = r.sense()
+    if(test_Z is None):
+        raise ValueError
+
+        
+
+def update_matrix(idx1, idx2, value, weight, omega, xi):
+    xi[idx1] += -(value * weight)
+    xi[idx2] +=  (value * weight)
+    
+    omega[idx1, idx1] +=  weight
+    omega[idx1, idx2] += -weight
+    omega[idx2, idx1] += -weight
+    omega[idx2, idx2] +=  weight
+    
+    
+# update prediction (control)
+def update_motion(next_step, step, dx, dy, omega, xi, mo_noise):
+
+    mo_noise = 1 / mo_noise
+    
+    ix = step * 2
+    iy = ix + 1
+    
+    ix_next = next_step * 2
+    iy_next = ix_next + 1
+    
+    # at row 0: x0 - x1 - dx = 0
+    # at row 1: -x0 + x1 + dx = 0
+    update_matrix(ix, ix_next, dx, mo_noise, omega, xi)
+    
+    # at row 0: y0 - y1 - dy = 0
+    # at row 1: -y0 + y1 + dy = 0
+    update_matrix(iy, iy_next, dy, mo_noise, omega, xi)
+    
+
+# update measuremet
+def update_measurement(step, meas, omega, xi, meas_noise, num_steps):
+    
+    meas_noise = 1 / meas_noise
+    
+    ix = step * 2
+    iy = ix + 1
+    
+    # landmark
+    index_landmark, meas_x, meas_y = meas
+    ix_m = num_steps * 2 + index_landmark * 2
+    iy_m = ix_m + 1
+    
+    # at row 0: x0 - m0_x - meas_x = 0
+    # at row 0: y0 - m0_y - meas_y = 0
+    update_matrix(ix, ix_m, meas_x, meas_noise, omega, xi)
+    
+    # at row landmark: -x0 + m1_x + meas_x = 0
+    # at row landmark: -y0 + m1_y + meas_y = 0
+    update_matrix(iy, iy_m, meas_y, meas_noise, omega, xi)
+    
