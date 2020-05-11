@@ -25,6 +25,7 @@ class robot:
     #
     def __init__(self, world_size = 100.0, measurement_range = 30.0,
                  motion_noise = 1.0, measurement_noise = 1.0):
+        
         self.measurement_noise = 0.0
         self.world_size = world_size
         self.measurement_range = measurement_range
@@ -80,16 +81,22 @@ class robot:
         measurements = []
         
         ## TODO: iterate through all of the landmarks in a world
-        
+        for i in range(len(self.landmarks)):
         ## TODO: For each landmark
         ## 1. compute dx and dy, the distances between the robot and the landmark
+            dx = self.landmarks[i][0] - self.x 
+            dy = self.landmarks[i][1] - self.y 
         ## 2. account for measurement noise by *adding* a noise component to dx and dy
         ##    - The noise component should be a random value between [-1.0, 1.0)*measurement_noise
         ##    - Feel free to use the function self.rand() to help calculate this noise component
+        ##    - It may help to reference the `move` function for noise calculation
+            dx = dx + self.rand() * self.measurement_noise
+            dy = dy + self.rand() * self.measurement_noise        
         ## 3. If either of the distances, dx or dy, fall outside of the internal var, measurement_range
         ##    then we cannot record them; if they do fall in the range, then add them to the measurements list
         ##    as list.append([index, dx, dy]), this format is important for data creation done later
-        
+            if abs(dx) <= self.measurement_range and abs(dy) <= self.measurement_range:
+                measurements.append([i, dx, dy]) 
         ## TODO: return the final, complete list of measurements
         return measurements
 
